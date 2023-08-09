@@ -1,3 +1,4 @@
+# server.py
 import socket
 import threading
 
@@ -7,7 +8,6 @@ PORT = 1234
 clients = []
 usernames = {}
 
-# Creating a socket object
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
@@ -18,6 +18,9 @@ def broadcast(message, sender=None):
             client.send(message)
 
 def handle_client(client):
+    username = usernames[client]
+    broadcast(f'[SERVER] {username} has joined the chat'.encode('utf-8'))
+
     while True:
         try:
             message = client.recv(4096).decode('utf-8')
@@ -26,7 +29,7 @@ def handle_client(client):
                     recipient, message = message[1:].split(' ', 1)
                     send_personal_message(client, recipient, message)
                 else:
-                    broadcast(message.encode('utf-8'), client)
+                    broadcast(f'[{username}] {message}'.encode('utf-8'))
             else:
                 remove_client(client)
                 break
@@ -43,10 +46,11 @@ def remove_client(client):
 
 def send_personal_message(sender, recipient, message):
     if recipient in usernames.values():
+        sender_username = usernames[sender]  # Get sender's username
         for client, username in usernames.items():
             if username == recipient:
-                client.send(f'[PM][{usernames[sender]}] {message}'.encode('utf-8'))
-                sender.send(f'[PM][{recipient}] {message}'.encode('utf-8'))
+                client.send(f'[PM][{sender_username}] {message}'.encode('utf-8'))  # Show sender's username
+                sender.send(f'[PM][{sender_username}] {message}'.encode('utf-8'))  # Show sender's username
                 break
     else:
         sender.send(f'[SERVER] User {recipient} does not exist or is offline'.encode('utf-8'))
@@ -62,9 +66,6 @@ def listen_for_connections():
         clients.append(client)
 
         print(f"Username: {username}")
-        broadcast(f"[SERVER] {username} has joined the chat".encode('utf-8'))
-        client.send('[SERVER] You are connected!'.encode('utf-8'))
-
         threading.Thread(target=handle_client, args=(client,)).start()
 
 print("Server started...")

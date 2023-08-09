@@ -1,3 +1,4 @@
+# client.py
 import socket
 import threading
 import tkinter as tk
@@ -52,19 +53,18 @@ def send_personal_message():
         messagebox.showerror("Invalid input", "Recipient and message cannot be empty")
         return
 
+    formatted_message = f'[PM][{username_textbox.get()}] {message}'  # Format the message
+    add_message(formatted_message)  # Display the message in the sender's window
+
     client_socket.send(f"@{recipient} {message}".encode())
     message_textbox.delete(0, tk.END)
+
 
 def listen_for_messages_from_server(client_socket):
     while True:
         try:
             message = client_socket.recv(4096).decode('utf-8')
-            if message.startswith('[SERVER]'):
-                add_message(message)
-            elif message.startswith('[PM]'):
-                add_message(message[4:])
-            else:
-                add_message(message)
+            add_message(message)
         except Exception as e:
             print(f'Error while receiving message: {e}')
             break

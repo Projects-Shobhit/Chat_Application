@@ -1,72 +1,72 @@
-# server.py
 import socket
 import threading
 
-HOST = '127.0.0.1'
+HOST = HOST = socket.gethostbyname(socket.gethostname())
 PORT = 1234
 
-clients = []
-usernames = {}
+clients = {}
+PASSWORD = "password"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
 
 def broadcast(message, sender=None):
-    for client in clients:
+    for client, _ in clients.items():
         if sender is None or client != sender:
             client.send(message)
 
-def handle_client(client):
-    username = usernames[client]
-    broadcast(f'[SERVER] {username} has joined the chat'.encode('utf-8'))
+def handle_client(client, username):
+    broadcast(f'[SERVER] {username} has joined the chat\n'.encode('utf-8'))
 
     while True:
         try:
             message = client.recv(4096).decode('utf-8')
-            if message:
-                if message.startswith('@'):
-                    recipient, message = message[1:].split(' ', 1)
-                    send_personal_message(client, recipient, message)
-                else:
-                    broadcast(f'[{username}] {message}'.encode('utf-8'))
-            else:
+            if not message:
                 remove_client(client)
                 break
+
+            if message.startswith('@'):
+                recipient, message = message[1:].split(' ', 1)
+                send_personal_message(client, username, recipient, message)
+            else:
+                broadcast(f'[{username}] {message}'.encode('utf-8'))
         except:
             remove_client(client)
             break
 
 def remove_client(client):
     if client in clients:
-        clients.remove(client)
-        username = usernames[client]
-        del usernames[client]
-        broadcast(f'[SERVER] {username} has left the chat'.encode('utf-8'))
+        username = clients[client]
+        del clients[client]
+        broadcast(f'[SERVER] {username} has left the chat\n'.encode('utf-8'))
 
-def send_personal_message(sender, recipient, message):
-    if recipient in usernames.values():
-        sender_username = usernames[sender]  # Get sender's username
-        for client, username in usernames.items():
-            if username == recipient:
-                client.send(f'[PM][{sender_username}] {message}'.encode('utf-8'))  # Show sender's username
-                sender.send(f'[PM][{sender_username}] {message}'.encode('utf-8'))  # Show sender's username
-                break
-    else:
-        sender.send(f'[SERVER] User {recipient} does not exist or is offline'.encode('utf-8'))
+def send_personal_message(sender, sender_username, recipient, message):
+    for client, username in clients.items():
+        if username == recipient:
+            client.send(f'[PM][{sender_username}] {message}\n'.encode('utf-8'))
+            break
+
+def authenticate(client, received_password):
+    return received_password == PASSWORD
 
 def listen_for_connections():
     while True:
         client, address = server.accept()
         print(f"Connected with {str(address)}")
 
-        client.send('[USERNAME]'.encode('utf-8'))
-        username = client.recv(4096).decode('utf-8')
-        usernames[client] = username
-        clients.append(client)
+        received_credentials = client.recv(4096).decode('utf-8')
+        username, received_password = received_credentials.split(':')
 
-        print(f"Username: {username}")
-        threading.Thread(target=handle_client, args=(client,)).start()
+        if authenticate(client, received_password):
+            clients[client] = username
+            client.send('[AUTH_SUCCESS]'.encode('utf-8'))
+            print(f"Authenticated: {username}")
+            threading.Thread(target=handle_client, args=(client, username)).start()
+        else:
+            print(f"Authentication failed for {address}")
+            client.send('[AUTH_FAILED]'.encode('utf-8'))
+            client.close()
 
 print("Server started...")
 listen_for_connections()

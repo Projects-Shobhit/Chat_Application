@@ -23,3 +23,6 @@ Added a security feature with password-based user authentication.
 
 Added the functionality of getting the current IP Address of the server system with the help of OS.
 To correspond the changes, the dynamic binding of HOST and PORT in the client.py application file will be done after getting user-inputs of Server IP Address and PORT number. { YES, the user who is using the application will have to know the password, SERVER IP and PORT number and needs to enter them manually as a feature of security.}
+
+![image](https://github.com/Projects-Shobhit/Chat_Application/assets/75949429/b13728bc-2a49-49b0-abaa-61973cdcb60e)
+
